@@ -1,20 +1,103 @@
-# esp32-st7796-nanogui
+# learn-to-code-arcade
 
-Running [Peter Hinch's **nano-gui**](https://github.com/peterhinch/micropython-nano-gui)
-on a **4.0" ST7796S** (480×320) TFT with **XPT2046** resistive touch, driven by a
-plain ESP32 under stock MicroPython — no PSRAM, no custom firmware.
+**Build a real handheld game console — and learn to code doing it.**
 
-Ready-to-run tests:
+Take a **~$15 ESP32 touchscreen**, load five classic games you can play right away —
+**Tic-Tac-Toe, Connect Four, Minesweeper, Hangman, and 2048** — then open the code and start
+changing it. Every game is written to be read and tinkered with, and paired with
+[**Claude Code**](https://claude.com/claude-code) you get a patient tutor that explains any
+file, makes changes alongside you, and helps you build your own games.
+
+No experience needed. If you can copy and paste a few commands you'll have the games running
+today; after that you learn the way real programmers do — change something, run it, see what
+happens on actual hardware, and ask *why*.
+
+## What you need to buy (~$15)
+
+Just one board and a USB-C cable — **no soldering, no breadboard, no extra parts.**
+
+| Part | What it is | Where |
+|------|-----------|-------|
+| ESP32 + 4" touchscreen board | The **[AITRIP 4.0″ ESP32 ST7796 touchscreen](https://www.amazon.com/dp/B0GGB5W5XK)** (480×320, model E32R40T / E32N40T): the ESP32 chip, a color display, and resistive touch all on one board with a USB-C port. | ~$15–20 on Amazon |
+| USB-C cable | A **data** USB-C cable (not a charge-only one) to plug the board into your computer. | you likely have one |
+
+This project was built and tested on that exact AITRIP board. The same hardware also shows
+up elsewhere under *"ESP32 4.0 inch ST7796 480x320 touch"* (often ~$10 on AliExpress), and
+usually ships as a small kit with a stylus.
+
+## Load the games in ~10 minutes
+
+You need a computer (Mac / Windows / Linux) with **Python** installed. Open a terminal:
+
+```bash
+# 1. install the two small tools that talk to the board
+pip install esptool mpremote
+
+# 2. get this project
+git clone https://github.com/MarioCruz/learn-to-code-arcade
+cd learn-to-code-arcade
+
+# 3. one time: put MicroPython on the board. Download "ESP32_GENERIC" v1.27.0 from
+#    https://micropython.org/download/ESP32_GENERIC/  then (swap in your port, see below):
+esptool --chip esp32 --port YOUR_PORT erase-flash
+esptool --chip esp32 --port YOUR_PORT --baud 460800 write-flash -z 0x1000 ESP32_GENERIC-*.bin
+
+# 4. copy the arcade onto the board and start the menu
+./deploy.sh YOUR_PORT
+mpremote connect YOUR_PORT run menu.py
+
+# 5. optional: make it boot straight into the games whenever it is plugged in
+mpremote connect YOUR_PORT fs cp menu.py :main.py
+```
+
+**Finding `YOUR_PORT`:** run `mpremote connect list`. It looks like `/dev/cu.usbserial-XXXX`
+on macOS, `/dev/ttyUSB0` on Linux, or `COM3` on Windows.
+
+Tap a game to play; each game's **MENU** button brings you back to the launcher.
+
+## Learn to code with Claude Code
+
+Now the fun part — **change it.** [Claude Code](https://claude.com/claude-code) is an AI
+assistant that runs in your terminal, reads this project with you, explains what things do,
+and does the typing while you learn. Install it, run `claude` inside this folder, and try
+asking:
+
+- *"Explain what `tictactoe_test.py` does, like I have never coded before."*
+- *"Change the X marks to green and the O marks to orange."* — then re-run it and watch.
+- *"Add BANANA, GUITAR and DRAGON to the Hangman word list."*
+- *"Make the Connect Four computer easier to beat."* (hint: it is the `DEPTH` setting)
+- *"Why does the screen only have 16 colors?"*
+- *"Help me add a new game — Snake — to the menu."*
+
+Every change is a tiny, safe experiment: edit a file, re-run it, and see the result on the
+screen in seconds. That loop — **change → run → see → ask why** — is how you actually learn
+to code, and doing it on real hardware you can hold in your hand makes it stick. Claude Code
+is there for the *how* and the *why* the whole way.
+
+> New to Claude Code? Get it at https://claude.com/claude-code, then run `claude` in this
+> folder and say hello.
+
+---
+
+## Under the hood (the technical bits)
+
+The arcade runs [Peter Hinch's **nano-gui**](https://github.com/peterhinch/micropython-nano-gui)
+on a **4.0" ST7796S** (480×320) TFT with **XPT2046** resistive touch, driven by a plain
+ESP32 under stock MicroPython — no PSRAM, no custom firmware.
+
+The games and building blocks:
 
 | File | What it does |
 |------|--------------|
-| `menu.py`           | **Game launcher** — a touch menu that runs Tic-Tac-Toe, Connect Four, Minesweeper, or Hangman; each game's **MENU** button returns here. Can boot on power-up as `main.py`. |
-| `nanogui_test.py`   | Full-screen nano-gui render: color bars, border, text labels, shapes. |
-| `touch_test.py`     | Reads the XPT2046 over the shared SPI bus and draws a marker where you touch, with 5 on-screen calibration targets. |
-| `tictactoe_test.py` | Full touch-driven game: tap a cell to play X, a heuristic AI plays O, on-screen scoreboard + **NEW GAME** button. Demonstrates the complete touch → state → redraw loop. |
-| `connect4_test.py`  | Connect Four: tap a column to drop a RED disc, a minimax + alpha-beta AI plays YELLOW, winning four ringed in white, scoreboard + **NEW GAME** button. |
-| `minesweeper_test.py` | Minesweeper (9×7, 10 mines): a **MODE** button toggles DIG/FLAG (resistive touch has no right-click), first dig is always safe, zero-cells flood open, mines reveal on a loss. |
-| `hangman_test.py`   | Hangman with an on-screen A–Z keyboard: tap letters to guess, six misses draws the full figure. |
+| `menu.py`           | **Game launcher** — a touch menu that runs any of the five games; each game's **MENU** button returns here. Can boot on power-up as `main.py`. |
+| `tictactoe_test.py` | Tic-Tac-Toe: tap a cell to play X, a heuristic AI plays O, scoreboard + **NEW GAME**. The reference touch → state → redraw pattern. |
+| `connect4_test.py`  | Connect Four: tap a column to drop a RED disc, a minimax + alpha-beta AI plays YELLOW, winning four ringed in white. |
+| `minesweeper_test.py` | Minesweeper (9×7, 10 mines): a **MODE** button toggles DIG/FLAG (resistive touch has no right-click), first dig safe, zero-cells flood open. |
+| `hangman_test.py`   | Hangman with a self-drawn on-screen A–Z keyboard: tap letters to guess, six misses draws the full figure. |
+| `2048_test.py`      | 2048: **swipe** to slide the 4×4 board; equal tiles merge and double; reach 2048 to win. |
+| `game_common.py`    | Shared display + touch helpers (imported by the menu and every game). |
+| `nanogui_test.py`   | Full-screen nano-gui render smoke test: color bars, border, text, shapes. |
+| `touch_test.py`     | XPT2046 touch read with 5 on-screen calibration targets. |
 
 ## Install the whole suite
 
@@ -36,7 +119,7 @@ with `mpremote connect <port> fs rm :main.py`.
 
 ## Game launcher (menu)
 
-`menu.py` is a touch launcher that ties the four games together. It shows a button per
+`menu.py` is a touch launcher that ties the five games together. It shows a button per
 game; tapping one loads that game's module and calls its `run()`. Each game has a **MENU**
 button that returns you to the launcher.
 
@@ -47,7 +130,7 @@ mpremote connect /dev/cu.usbserial-110 run menu.py
 mpremote connect /dev/cu.usbserial-110 fs cp menu.py :main.py
 ```
 
-The three game files are both **standalone-runnable** (`mpremote run tictactoe_test.py`
+The game files are both **standalone-runnable** (`mpremote run tictactoe_test.py`
 still works and plays a self-test first) **and importable** — the menu imports them and
 calls `run()`, guarded by `if __name__ == "__main__"`. Because this board has no PSRAM and
 the framebuffer is the gating allocation, the launcher **unloads a game's module**
@@ -125,6 +208,22 @@ mpremote connect /dev/cu.usbserial-110 run hangman_test.py
 
 Edit the `WORDS` tuple to change the word list (keep entries A–Z and ≤ ~9 letters so they
 fit the display). Runs with ~35 KB free.
+
+## 2048 (touch game)
+
+`2048_test.py` is the classic 4×4 slider. Because resistive touch is single-point, a
+**swipe** is measured as the vector from finger-down to finger-up — swipe up/down/left/right
+to slide every tile that way; equal tiles merge and double. A short press is treated as a
+tap (for the **NEW GAME** / **MENU** buttons). Reach 2048 to win (keep going for a higher
+score); when no move is possible it's game over. Tiles are colour-coded by value.
+
+```bash
+./deploy.sh /dev/cu.usbserial-110
+mpremote connect /dev/cu.usbserial-110 run 2048_test.py
+```
+
+`SWIPE_MIN` (default 30 px) sets how far you must drag before it counts as a swipe rather
+than a tap. Runs with ~53 KB free.
 
 ## Hardware
 
@@ -231,5 +330,5 @@ handoff; do sensor I2C/1-Wire on their own pins.
 - **ST7796 driver, hardware setup, tests, games, and launcher**
   (`drivers/st7796/st7796.py`, `color_setup.py`, `game_common.py`, `menu.py`,
   `nanogui_test.py`, `touch_test.py`, `tictactoe_test.py`, `connect4_test.py`,
-  `minesweeper_test.py`, `hangman_test.py`) — © Mario Cruz, MIT. See `LICENSE`. The ST7796
-  driver derives from Peter Hinch's ILI9486 driver (MIT).
+  `minesweeper_test.py`, `hangman_test.py`, `2048_test.py`) — © Mario Cruz, MIT. See
+  `LICENSE`. The ST7796 driver derives from Peter Hinch's ILI9486 driver (MIT).

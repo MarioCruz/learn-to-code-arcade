@@ -26,9 +26,10 @@ wri = CWriter(ssd, font, WHITE, BLACK, verbose=False)
 GAMES = (("Tic-Tac-Toe", "tictactoe_test", CYAN),
          ("Connect Four", "connect4_test", YELLOW),
          ("Minesweeper", "minesweeper_test", GREEN),
-         ("Hangman", "hangman_test", MAGENTA))
+         ("Hangman", "hangman_test", MAGENTA),
+         ("2048", "2048_test", RED))
 
-BTN_W, BTN_H, GAP = 300, 46, 16
+BTN_W, BTN_H, GAP = 300, 40, 10
 BTN_X = (W - BTN_W) // 2                          # horizontally centred
 BLOCK_H = len(GAMES) * BTN_H + (len(GAMES) - 1) * GAP
 TOP = (H - BLOCK_H) // 2 + 6                      # centred vertically, nudged for title
@@ -49,7 +50,7 @@ def draw_menu():
     ssd.fill(BLACK)
     ssd.rect(0, 0, W, H, WHITE)
     title = "GAME MENU"
-    Label(wri, 18, _cx(title, 0, W), title, fgcolor=WHITE)
+    Label(wri, 14, _cx(title, 0, W), title, fgcolor=WHITE)
     for i, (label, mod, col) in enumerate(GAMES):
         x, y, w, h = btn_rect(i)
         ssd.fill_rect(x, y, w, h, DARKBLUE)

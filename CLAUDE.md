@@ -1,4 +1,10 @@
-# CLAUDE.md — esp32-st7796-nanogui
+# CLAUDE.md — learn-to-code-arcade
+
+> Repo renamed 2026-07-01 from `esp32-st7796-nanogui` to **`learn-to-code-arcade`** and
+> repositioned as a beginner "learn to code" kit: a ~$15 ESP32 touchscreen + five touch
+> games + a README that teaches kids to buy the board, load the games, and learn coding by
+> changing them with Claude Code. The local folder is still `esp32-st7796-nanogui`.
+> Board buy link: https://www.amazon.com/dp/B0GGB5W5XK (AITRIP 4.0" ESP32 ST7796).
 
 Context for Claude Code. Read this before working here.
 
@@ -7,11 +13,11 @@ Context for Claude Code. Read this before working here.
 Peter Hinch's **nano-gui** + **XPT2046** resistive touch running on a **4.0" ST7796S**
 480×320 TFT, driven by a **plain ESP32 (no PSRAM)** under stock MicroPython v1.27.0.
 Tests + a game launcher: `nanogui_test.py` (display render), `touch_test.py` (touch),
-and four games — `tictactoe_test.py` (the reference interactive-UI pattern),
+and five games — `tictactoe_test.py` (the reference interactive-UI pattern),
 `connect4_test.py` (minimax + alpha-beta AI), `minesweeper_test.py` (DIG/FLAG mode toggle),
-`hangman_test.py` (self-drawn on-screen A-Z keyboard; nano-gui has no keyboard widget).
-`menu.py` is a touch launcher that runs any of the four; shared display+touch code is in
-`game_common.py`. The games are both standalone-runnable and importable (guarded by
+`hangman_test.py` (self-drawn on-screen A-Z keyboard; nano-gui has no keyboard widget),
+`2048_test.py` (swipe-driven; gesture = finger-down→up vector). `menu.py` is a touch
+launcher that runs any of the five; shared display+touch code is in `game_common.py`. The games are both standalone-runnable and importable (guarded by
 `if __name__ == "__main__"`); the menu unloads each game's module on exit so only one is
 resident at a time (no PSRAM). Extracted from `ESP32-EnvMonitor-v2` on 2026-07-01.
 
@@ -68,6 +74,7 @@ mpremote connect /dev/cu.usbserial-110 run tictactoe_test.py # touch game (tap t
 mpremote connect /dev/cu.usbserial-110 run connect4_test.py  # Connect Four vs minimax AI (tap a column)
 mpremote connect /dev/cu.usbserial-110 run minesweeper_test.py # Minesweeper (MODE toggles DIG/FLAG)
 mpremote connect /dev/cu.usbserial-110 run hangman_test.py   # Hangman (on-screen A-Z keyboard)
+mpremote connect /dev/cu.usbserial-110 run 2048_test.py      # 2048 (swipe to slide tiles)
 mpremote connect /dev/cu.usbserial-110 run menu.py           # game launcher (tap a game; MENU returns)
 # boot into the menu on power-up:
 mpremote connect /dev/cu.usbserial-110 fs cp menu.py :main.py
@@ -90,6 +97,10 @@ Interactive touch capture: `run touch_test.py` blocks ~35 s and prints each tap'
   flood, `random` seeded from `ticks_us`. Dips to ~37 KB during a large flood render.
 - ✅ `hangman_test.py` — Hangman with a self-drawn on-screen A-Z keyboard (nano-gui has NO
   keyboard widget — display-only). 9/9/8 key grid, six misses draws the figure. ~35 KB free.
+- ✅ `2048_test.py` — 2048 (4×4). Adds SWIPE input: `get_gesture()` follows the touch from
+  down to up and classifies tap vs swipe (dir from the larger axis). Logic self-tested;
+  ~53 KB free. NOTE: standalone verified on device, but the 5-game menu layout (BTN_H=40,
+  GAP=10) was NOT yet visually confirmed on the panel (port was busy at build time).
 - ✅ `menu.py` — touch launcher for the four games; `game_common.py` holds the shared
   display+touch helpers. Games are standalone-runnable AND importable; menu unloads each
   game's module on exit (only one resident — no PSRAM). Labels centred via `wri.stringlen`.
