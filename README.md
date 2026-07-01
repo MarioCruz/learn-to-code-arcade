@@ -11,6 +11,7 @@ Ready-to-run tests:
 | `nanogui_test.py`   | Full-screen nano-gui render: color bars, border, text labels, shapes. |
 | `touch_test.py`     | Reads the XPT2046 over the shared SPI bus and draws a marker where you touch, with 5 on-screen calibration targets. |
 | `tictactoe_test.py` | Full touch-driven game: tap a cell to play X, a heuristic AI plays O, on-screen scoreboard + **NEW GAME** button. Demonstrates the complete touch → state → redraw loop. |
+| `connect4_test.py`  | Connect Four: tap a column to drop a RED disc, a minimax + alpha-beta AI plays YELLOW, winning four ringed in white, scoreboard + **NEW GAME** button. |
 
 ## Tic-tac-toe (touch game)
 
@@ -30,6 +31,24 @@ mpremote connect /dev/cu.usbserial-110 run tictactoe_test.py
 On start it plays a ~2 s scripted self-test (this also confirms rendering + win detection
 on a headless `run`), prints `TTT_READY`, then waits for taps. Tap a cell to move, tap
 **NEW GAME** to reset, `Ctrl-C` to quit. Runs with ~50 KB free.
+
+## Connect Four (touch game)
+
+`connect4_test.py` is the standard 7×6 grid: **you play RED** (tap a column, the disc
+drops to the lowest free slot), and a **minimax + alpha-beta** AI plays YELLOW. The
+winning four are ringed in white; the right panel has the scoreboard and a **NEW GAME**
+button.
+
+```bash
+./deploy.sh /dev/cu.usbserial-110
+mpremote connect /dev/cu.usbserial-110 run connect4_test.py
+```
+
+Search depth is the `DEPTH` constant (default 4). On this ESP32 the AI's worst case (its
+first move on an empty board) is ~1.5 s; mid-game it is faster thanks to alpha-beta
+pruning and immediate win/block cutoffs, and it is masked by the "CPU thinking..." message.
+Lower `DEPTH` for a snappier/weaker opponent, raise it for a stronger/slower one. The
+startup self-test also prints the measured AI move time. Runs with ~46 KB free.
 
 ## Hardware
 
@@ -134,6 +153,6 @@ handoff; do sensor I2C/1-Wire on their own pins.
   © Peter Hinch, MIT. See `LICENSE-nano-gui`. Upstream:
   https://github.com/peterhinch/micropython-nano-gui
 - **ST7796 driver, hardware setup, and tests** (`drivers/st7796/st7796.py`,
-  `color_setup.py`, `nanogui_test.py`, `touch_test.py`, `tictactoe_test.py`) —
-  © Mario Cruz, MIT. See `LICENSE`. The ST7796 driver derives from Peter Hinch's
-  ILI9486 driver (MIT).
+  `color_setup.py`, `nanogui_test.py`, `touch_test.py`, `tictactoe_test.py`,
+  `connect4_test.py`) — © Mario Cruz, MIT. See `LICENSE`. The ST7796 driver derives
+  from Peter Hinch's ILI9486 driver (MIT).

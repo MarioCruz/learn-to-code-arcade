@@ -6,8 +6,9 @@ Context for Claude Code. Read this before working here.
 
 Peter Hinch's **nano-gui** + **XPT2046** resistive touch running on a **4.0" ST7796S**
 480×320 TFT, driven by a **plain ESP32 (no PSRAM)** under stock MicroPython v1.27.0.
-Three working tests: `nanogui_test.py` (display render), `touch_test.py` (touch), and
-`tictactoe_test.py` (touch-driven game — the reference interactive-UI pattern).
+Four working tests: `nanogui_test.py` (display render), `touch_test.py` (touch),
+`tictactoe_test.py` (touch-driven game — the reference interactive-UI pattern), and
+`connect4_test.py` (Connect Four with a minimax + alpha-beta AI).
 Extracted from the `ESP32-EnvMonitor-v2` project on 2026-07-01.
 
 ## Hardware (measured / confirmed)
@@ -60,6 +61,7 @@ Firmware: `ESP32_GENERIC` v1.27.0. Serial port on this Mac: `/dev/cu.usbserial-1
 mpremote connect /dev/cu.usbserial-110 run nanogui_test.py # display test
 mpremote connect /dev/cu.usbserial-110 run touch_test.py   # touch test (tap during ~35s)
 mpremote connect /dev/cu.usbserial-110 run tictactoe_test.py # touch game (tap to play, Ctrl-C to stop)
+mpremote connect /dev/cu.usbserial-110 run connect4_test.py  # Connect Four vs minimax AI (tap a column)
 ```
 
 Interactive touch capture: `run touch_test.py` blocks ~35 s and prints each tap's
@@ -72,6 +74,8 @@ Interactive touch capture: `run touch_test.py` blocks ~35 s and prints each tap'
 - ✅ Display orientation confirmed correct (via touch calibration alignment).
 - ✅ `tictactoe_test.py` — full touch→state→redraw interactive UI loop; renders clean,
   ~50 KB free at runtime. The reference pattern for the next step below.
+- ✅ `connect4_test.py` — Connect Four (7×6) on the same skeleton, with a minimax +
+  alpha-beta AI (DEPTH=4, ~1.5 s worst-case move on an empty board). ~46 KB free.
 - 🔜 **Bring hardware/sensor data onto the UI** — build a live dashboard reusing the
   `tictactoe_test.py` skeleton (`read_raw`/`get_tap` + `state` dict + `redraw`), driving
   redraws from sensor reads. Sensors on their own pins; touch and display share SPI(1).
