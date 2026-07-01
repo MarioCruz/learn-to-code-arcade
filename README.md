@@ -1,5 +1,9 @@
 # learn-to-code-arcade
 
+<p align="center">
+  <img src="MarioTheMaker1.jpg" width="130" alt="Mario the Maker">
+</p>
+
 **Build a real handheld game console — and learn to code doing it.**
 
 Take a **~$15 ESP32 touchscreen**, load five classic games you can play right away —
