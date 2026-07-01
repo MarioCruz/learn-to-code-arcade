@@ -8,10 +8,52 @@ Ready-to-run tests:
 
 | File | What it does |
 |------|--------------|
+| `menu.py`           | **Game launcher** — a touch menu that runs Tic-Tac-Toe, Connect Four, or Minesweeper; each game's **MENU** button returns here. Can boot on power-up as `main.py`. |
 | `nanogui_test.py`   | Full-screen nano-gui render: color bars, border, text labels, shapes. |
 | `touch_test.py`     | Reads the XPT2046 over the shared SPI bus and draws a marker where you touch, with 5 on-screen calibration targets. |
 | `tictactoe_test.py` | Full touch-driven game: tap a cell to play X, a heuristic AI plays O, on-screen scoreboard + **NEW GAME** button. Demonstrates the complete touch → state → redraw loop. |
 | `connect4_test.py`  | Connect Four: tap a column to drop a RED disc, a minimax + alpha-beta AI plays YELLOW, winning four ringed in white, scoreboard + **NEW GAME** button. |
+| `minesweeper_test.py` | Minesweeper (9×7, 10 mines): a **MODE** button toggles DIG/FLAG (resistive touch has no right-click), first dig is always safe, zero-cells flood open, mines reveal on a loss. |
+
+## Install the whole suite
+
+Copy every driver, font, game, and the launcher to the board, then boot into the menu:
+
+```bash
+# 1. (first time only) flash MicroPython v1.27.0 — see "Flash & deploy" below
+# 2. copy the whole project (drivers/, gui/, color_setup, game_common, menu, all games)
+./deploy.sh /dev/cu.usbserial-110
+# 3. run the menu now …
+mpremote connect /dev/cu.usbserial-110 run menu.py
+# 4. … or make it launch automatically on power-up
+mpremote connect /dev/cu.usbserial-110 fs cp menu.py :main.py
+```
+
+`deploy.sh` copies `drivers/`, `gui/`, `color_setup.py`, `game_common.py`, `menu.py`, and
+every test/game file. After step 4 the device boots straight into the game menu; remove it
+with `mpremote connect <port> fs rm :main.py`.
+
+## Game launcher (menu)
+
+`menu.py` is a touch launcher that ties the three games together. It shows a button per
+game; tapping one loads that game's module and calls its `run()`. Each game has a **MENU**
+button that returns you to the launcher.
+
+```bash
+./deploy.sh /dev/cu.usbserial-110
+mpremote connect /dev/cu.usbserial-110 run menu.py
+# or make it boot on power-up:
+mpremote connect /dev/cu.usbserial-110 fs cp menu.py :main.py
+```
+
+The three game files are both **standalone-runnable** (`mpremote run tictactoe_test.py`
+still works and plays a self-test first) **and importable** — the menu imports them and
+calls `run()`, guarded by `if __name__ == "__main__"`. Because this board has no PSRAM and
+the framebuffer is the gating allocation, the launcher **unloads a game's module**
+(`del sys.modules[...]` + `gc.collect()`) when you leave it, so only one game's code is
+resident at a time. Shared display + touch code lives in `game_common.py`, imported by the
+menu and every game. Worst case (Minesweeper's large flood render under the menu) still
+leaves ~33 KB free.
 
 ## Tic-tac-toe (touch game)
 
@@ -49,6 +91,23 @@ first move on an empty board) is ~1.5 s; mid-game it is faster thanks to alpha-b
 pruning and immediate win/block cutoffs, and it is masked by the "CPU thinking..." message.
 Lower `DEPTH` for a snappier/weaker opponent, raise it for a stronger/slower one. The
 startup self-test also prints the measured AI move time. Runs with ~46 KB free.
+
+## Minesweeper (touch game)
+
+`minesweeper_test.py` is a 9×7 board with 10 mines. Because resistive touch is
+single-point (no right-click), a **MODE** button toggles between **DIG** and **FLAG** —
+tap a cell to act in the current mode. The first dig is always safe (mines are placed
+after it, avoiding the tapped cell and its neighbours), zero-cells flood open, numbers are
+colour-coded 1–8, and the whole minefield is exposed on a loss. `Mines:` counts down as
+you flag.
+
+```bash
+./deploy.sh /dev/cu.usbserial-110
+mpremote connect /dev/cu.usbserial-110 run minesweeper_test.py
+```
+
+Tune `COLS`, `ROWS`, `MINES` at the top for a bigger/harder board (keep cells ≥ ~30 px so
+they stay easy to tap). Runs with ~50 KB free (dips to ~37 KB during a large flood render).
 
 ## Hardware
 
@@ -152,7 +211,8 @@ handoff; do sensor I2C/1-Wire on their own pins.
 - **nano-gui** (everything under `gui/`, plus `drivers/boolpalette.py`) —
   © Peter Hinch, MIT. See `LICENSE-nano-gui`. Upstream:
   https://github.com/peterhinch/micropython-nano-gui
-- **ST7796 driver, hardware setup, and tests** (`drivers/st7796/st7796.py`,
-  `color_setup.py`, `nanogui_test.py`, `touch_test.py`, `tictactoe_test.py`,
-  `connect4_test.py`) — © Mario Cruz, MIT. See `LICENSE`. The ST7796 driver derives
+- **ST7796 driver, hardware setup, tests, games, and launcher**
+  (`drivers/st7796/st7796.py`, `color_setup.py`, `game_common.py`, `menu.py`,
+  `nanogui_test.py`, `touch_test.py`, `tictactoe_test.py`, `connect4_test.py`,
+  `minesweeper_test.py`) — © Mario Cruz, MIT. See `LICENSE`. The ST7796 driver derives
   from Peter Hinch's ILI9486 driver (MIT).

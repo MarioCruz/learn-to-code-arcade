@@ -1,91 +1,21 @@
 # connect4_test.py — touch-driven Connect Four on the ST7796S (480x320) + XPT2046.
 #
-# You play RED (tap a column to drop a disc). A minimax + alpha-beta AI plays
-# YELLOW. First to line up four (horizontal / vertical / diagonal) wins; the
-# winning four are ringed in white. A NEW GAME button on the right resets.
-#
-# Same reusable skeleton as tictactoe_test.py: calibrated XPT2046 read on the
-# shared SPI(1) bus, a single `state` dict, and a full `redraw()` per change.
-#
-# Run:  mpremote connect /dev/cu.usbserial-110 run connect4_test.py
-# Stop: Ctrl-C (the interactive loop blocks waiting for taps).
-#
-# On startup a SELFTEST plays a scripted position so a headless `run` confirms
-# the board, discs, win detection + highlight render, and times one AI move.
+# You play RED (tap a column to drop). A minimax + alpha-beta AI plays YELLOW.
+# NEW GAME resets, MENU returns to the launcher. Importable (menu.py calls run())
+# or standalone via `mpremote run connect4_test.py` (plays a SELFTEST first,
+# which also times an AI move).
 
 import time
 import gc
-from color_setup import ssd, spi, pcs
+from game_common import ssd, get_tap, in_rect
 from gui.core.nanogui import refresh, circle, fillcircle
 from gui.core.writer import CWriter
 from gui.core.colors import *
 from gui.widgets.label import Label
 import gui.fonts.freesans20 as font
-from machine import Pin
 
 SELFTEST = True
 DEPTH = 4          # AI search depth (higher = stronger + slower)
-
-# ---- Touch (XPT2046 on shared SPI(1)) --------------------------------------
-T_CS = Pin(33, Pin.OUT, value=1)
-T_IRQ = Pin(36, Pin.IN)
-W = ssd.width   # 480
-H = ssd.height  # 320
-
-X_MIN, X_MAX = 270, 3850          # calibration from touch_test.py
-Y_MIN, Y_MAX = 380, 3720
-
-
-def read_raw():
-    if T_IRQ.value() != 0:        # IRQ low == touched
-        return None
-    spi.init(baudrate=2_000_000)  # XPT2046 max ~2.5MHz
-    pcs.value(1)                  # deselect display
-    xs = []
-    ys = []
-    try:
-        for _ in range(5):
-            T_CS.value(0)
-            spi.write(b"\x90")
-            r = spi.read(2)
-            rx = ((r[0] << 8) | r[1]) >> 3
-            T_CS.value(1)
-            T_CS.value(0)
-            spi.write(b"\xd0")
-            r = spi.read(2)
-            ry = ((r[0] << 8) | r[1]) >> 3
-            T_CS.value(1)
-            if 100 < rx < 4000 and 100 < ry < 4000:
-                xs.append(rx)
-                ys.append(ry)
-    finally:
-        spi.init(baudrate=20_000_000)  # ALWAYS restore fast SPI for display
-    if len(xs) < 2:
-        return None
-    xs.sort()
-    ys.sort()
-    m = len(xs) // 2
-    return (xs[m], ys[m])
-
-
-def to_screen(rx, ry):
-    x = W - 1 - (rx - X_MIN) * W // (X_MAX - X_MIN)
-    y = H - 1 - (ry - Y_MIN) * H // (Y_MAX - Y_MIN)
-    return (max(0, min(W - 1, x)), max(0, min(H - 1, y)))
-
-
-def get_tap():
-    while True:
-        p = read_raw()
-        if p:
-            x, y = to_screen(*p)
-            released = 0
-            while released < 3:
-                released = released + 1 if read_raw() is None else 0
-                time.sleep_ms(10)
-            return (x, y)
-        time.sleep_ms(20)
-
 
 # ---- Layout -----------------------------------------------------------------
 COLS, ROWS = 7, 6
@@ -93,7 +23,9 @@ CELL = 43
 BX, BY = 8, 34                     # board 301x258 -> x 8..309, y 34..292
 DISC_R = CELL // 2 - 3             # 18
 PANEL_X = 322
-BTN_X, BTN_Y, BTN_W, BTN_H = 330, 250, 140, 55
+BTN_W, BTN_H = 140, 32
+NEW_X, NEW_Y = 330, 244
+MENU_X, MENU_Y = 330, 282
 
 EMPTY, HUMAN, AI = 0, 1, 2         # HUMAN = RED, AI = YELLOW
 
@@ -109,15 +41,15 @@ ORDER = (3, 2, 4, 1, 5, 0, 6)              # centre-first column order
 
 # ---- Game logic -------------------------------------------------------------
 def valid_cols():
-    return [c for c in ORDER if grid[c] == EMPTY]     # top cell (row 0) free
+    return [c for c in ORDER if grid[c] == EMPTY]
 
 
 def is_full():
-    return EMPTY not in grid[:COLS]                   # all top cells taken
+    return EMPTY not in grid[:COLS]
 
 
 def drop(c, piece):
-    for r in range(ROWS - 1, -1, -1):                 # bottom up
+    for r in range(ROWS - 1, -1, -1):
         if grid[r * COLS + c] == EMPTY:
             grid[r * COLS + c] = piece
             return r
@@ -125,7 +57,6 @@ def drop(c, piece):
 
 
 def made_win(r, c, piece):
-    # Fast check: did the disc just placed at (r, c) complete a line of 4?
     for dr, dc in DIRS:
         count = 1
         rr, cc = r + dr, c + dc
@@ -144,7 +75,6 @@ def made_win(r, c, piece):
 
 
 def find_win(piece):
-    # Full-board scan; returns the 4 winning cells for `piece`, else None.
     for r in range(ROWS):
         for c in range(COLS):
             if grid[r * COLS + c] != piece:
@@ -179,22 +109,22 @@ def score_position():
     piece, opp = AI, HUMAN
     s = 0
     centre = COLS // 2
-    for r in range(ROWS):                             # prefer centre column
+    for r in range(ROWS):
         if grid[r * COLS + centre] == piece:
             s += 3
-    for r in range(ROWS):                             # horizontal
+    for r in range(ROWS):
         base = r * COLS
         for c in range(COLS - 3):
             s += _score_window(base + c, base + c + 1, base + c + 2, base + c + 3, piece, opp)
-    for c in range(COLS):                             # vertical
+    for c in range(COLS):
         for r in range(ROWS - 3):
             s += _score_window(r * COLS + c, (r + 1) * COLS + c,
                                (r + 2) * COLS + c, (r + 3) * COLS + c, piece, opp)
-    for r in range(ROWS - 3):                         # diagonal down-right
+    for r in range(ROWS - 3):
         for c in range(COLS - 3):
             s += _score_window(r * COLS + c, (r + 1) * COLS + c + 1,
                                (r + 2) * COLS + c + 2, (r + 3) * COLS + c + 3, piece, opp)
-    for r in range(ROWS - 3):                         # diagonal down-left
+    for r in range(ROWS - 3):
         for c in range(3, COLS):
             s += _score_window(r * COLS + c, (r + 1) * COLS + c - 1,
                                (r + 2) * COLS + c - 2, (r + 3) * COLS + c - 3, piece, opp)
@@ -251,15 +181,17 @@ def col_at(x):
     return None
 
 
-def in_button(x, y):
-    return BTN_X <= x <= BTN_X + BTN_W and BTN_Y <= y <= BTN_Y + BTN_H
-
-
 # ---- Drawing ----------------------------------------------------------------
+def draw_button(bx, by, bg, text, tx):
+    ssd.fill_rect(bx, by, BTN_W, BTN_H, bg)
+    ssd.rect(bx, by, BTN_W, BTN_H, WHITE)
+    Label(wri, by + 8, bx + tx, text, fgcolor=WHITE)
+
+
 def redraw():
     gc.collect()
     ssd.fill(BLACK)
-    ssd.fill_rect(BX - 4, BY - 4, COLS * CELL + 8, ROWS * CELL + 8, BLUE)  # board
+    ssd.fill_rect(BX - 4, BY - 4, COLS * CELL + 8, ROWS * CELL + 8, BLUE)
     for r in range(ROWS):
         for c in range(COLS):
             cx = BX + c * CELL + CELL // 2
@@ -267,22 +199,20 @@ def redraw():
             v = grid[r * COLS + c]
             col = BLACK if v == EMPTY else (RED if v == HUMAN else YELLOW)
             fillcircle(ssd, cx, cy, DISC_R, col)
-    if state["combo"]:                                # ring the winning four
+    if state["combo"]:
         for (r, c) in state["combo"]:
             cx = BX + c * CELL + CELL // 2
             cy = BY + r * CELL + CELL // 2
             circle(ssd, cx, cy, DISC_R, WHITE)
             circle(ssd, cx, cy, DISC_R - 1, WHITE)
-    # right panel
     Label(wri, 8, PANEL_X, "CONNECT", fgcolor=GREEN)
     Label(wri, 32, PANEL_X, "  FOUR", fgcolor=GREEN)
     Label(wri, 80, PANEL_X, state["msg"], fgcolor=state["col"])
-    Label(wri, 130, PANEL_X, "You:  %d" % state["you"], fgcolor=RED)
-    Label(wri, 160, PANEL_X, "CPU:  %d" % state["cpu"], fgcolor=YELLOW)
-    Label(wri, 190, PANEL_X, "Draw: %d" % state["draw"], fgcolor=WHITE)
-    ssd.fill_rect(BTN_X, BTN_Y, BTN_W, BTN_H, DARKBLUE)
-    ssd.rect(BTN_X, BTN_Y, BTN_W, BTN_H, WHITE)
-    Label(wri, BTN_Y + 18, BTN_X + 22, "NEW GAME", fgcolor=WHITE)
+    Label(wri, 120, PANEL_X, "You:  %d" % state["you"], fgcolor=RED)
+    Label(wri, 146, PANEL_X, "CPU:  %d" % state["cpu"], fgcolor=YELLOW)
+    Label(wri, 172, PANEL_X, "Draw: %d" % state["draw"], fgcolor=WHITE)
+    draw_button(NEW_X, NEW_Y, DARKBLUE, "NEW GAME", 22)
+    draw_button(MENU_X, MENU_Y, DARKGREEN, "MENU", 44)
     refresh(ssd)
 
 
@@ -299,16 +229,13 @@ def finish(win_piece, combo):
     state["over"] = True
     state["combo"] = combo
     if win_piece == HUMAN:
-        state["msg"] = "You win!"
-        state["col"] = GREEN
+        state["msg"], state["col"] = "You win!", GREEN
         state["you"] += 1
     elif win_piece == AI:
-        state["msg"] = "CPU wins!"
-        state["col"] = RED
+        state["msg"], state["col"] = "CPU wins!", RED
         state["cpu"] += 1
     else:
-        state["msg"] = "Draw."
-        state["col"] = WHITE
+        state["msg"], state["col"] = "Draw.", WHITE
         state["draw"] += 1
 
 
@@ -323,58 +250,56 @@ def resolve(piece):
     return False
 
 
-# ---- Self-test --------------------------------------------------------------
-def selftest():
-    print("SELFTEST_START free=%d" % gc.mem_free())
-    for c in range(4):                                # RED four-in-a-row, bottom
-        drop(c, HUMAN)
-    print("SELFTEST find_win(RED)=%s" % find_win(HUMAN))
-    over = resolve(HUMAN)
-    redraw()
-    print("SELFTEST winner=%s over=%s rendered free=%d" % (state["msg"], over, gc.mem_free()))
-    time.sleep(2)
-    new_game()                                        # time a first AI move
-    t0 = time.ticks_ms()
-    c = ai_choose()
-    dt = time.ticks_diff(time.ticks_ms(), t0)
-    print("SELFTEST ai_choose(depth=%d)=col%d in %dms" % (DEPTH, c, dt))
+# ---- Loop -------------------------------------------------------------------
+def run():
     new_game()
     redraw()
-    print("SELFTEST_DONE free=%d" % gc.mem_free())
-
-
-# ---- Main -------------------------------------------------------------------
-def main():
-    refresh(ssd, True)
-    if SELFTEST:
-        selftest()
-    new_game()
-    redraw()
-    print("C4_READY tap a column to play (Ctrl-C to stop) free=%d" % gc.mem_free())
+    print("C4_RUN free=%d" % gc.mem_free())
     while True:
         x, y = get_tap()
-        if in_button(x, y):
+        if in_rect(x, y, MENU_X, MENU_Y, BTN_W, BTN_H):
+            return
+        if in_rect(x, y, NEW_X, NEW_Y, BTN_W, BTN_H):
             new_game()
             redraw()
             continue
         if state["over"]:
             continue
         c = col_at(x)
-        if c is None or grid[c] != EMPTY:             # off-board or column full
+        if c is None or grid[c] != EMPTY:
             continue
-        drop(c, HUMAN)                                # human move
+        drop(c, HUMAN)
         if resolve(HUMAN):
             redraw()
             continue
-        state["msg"] = "CPU thinking..."
-        state["col"] = YELLOW
+        state["msg"], state["col"] = "CPU thinking...", YELLOW
         redraw()
-        aic = ai_choose()                             # AI move
+        aic = ai_choose()
         drop(aic, AI)
         if not resolve(AI):
-            state["msg"] = "Your turn"
-            state["col"] = RED
+            state["msg"], state["col"] = "Your turn", RED
         redraw()
 
 
-main()
+def selftest():
+    print("SELFTEST_START free=%d" % gc.mem_free())
+    for c in range(4):
+        drop(c, HUMAN)
+    print("SELFTEST find_win(RED)=%s" % find_win(HUMAN))
+    over = resolve(HUMAN)
+    redraw()
+    print("SELFTEST winner=%s over=%s rendered free=%d" % (state["msg"], over, gc.mem_free()))
+    time.sleep(2)
+    new_game()
+    t0 = time.ticks_ms()
+    c = ai_choose()
+    dt = time.ticks_diff(time.ticks_ms(), t0)
+    print("SELFTEST ai_choose(depth=%d)=col%d in %dms" % (DEPTH, c, dt))
+    new_game()
+
+
+if __name__ == "__main__":
+    refresh(ssd, True)
+    if SELFTEST:
+        selftest()
+    run()
