@@ -6,7 +6,8 @@ Context for Claude Code. Read this before working here.
 
 Peter Hinch's **nano-gui** + **XPT2046** resistive touch running on a **4.0" ST7796S**
 480×320 TFT, driven by a **plain ESP32 (no PSRAM)** under stock MicroPython v1.27.0.
-Two working tests: `nanogui_test.py` (display render) and `touch_test.py` (touch).
+Three working tests: `nanogui_test.py` (display render), `touch_test.py` (touch), and
+`tictactoe_test.py` (touch-driven game — the reference interactive-UI pattern).
 Extracted from the `ESP32-EnvMonitor-v2` project on 2026-07-01.
 
 ## Hardware (measured / confirmed)
@@ -58,6 +59,7 @@ Firmware: `ESP32_GENERIC` v1.27.0. Serial port on this Mac: `/dev/cu.usbserial-1
 ./deploy.sh /dev/cu.usbserial-110                          # copy project to board
 mpremote connect /dev/cu.usbserial-110 run nanogui_test.py # display test
 mpremote connect /dev/cu.usbserial-110 run touch_test.py   # touch test (tap during ~35s)
+mpremote connect /dev/cu.usbserial-110 run tictactoe_test.py # touch game (tap to play, Ctrl-C to stop)
 ```
 
 Interactive touch capture: `run touch_test.py` blocks ~35 s and prints each tap's
@@ -68,6 +70,11 @@ Interactive touch capture: `run touch_test.py` blocks ~35 s and prints each tap'
 - ✅ nano-gui full-resolution (480×320) display render — works, ~60 KB free.
 - ✅ XPT2046 touch with accurate calibration on shared SPI.
 - ✅ Display orientation confirmed correct (via touch calibration alignment).
+- ✅ `tictactoe_test.py` — full touch→state→redraw interactive UI loop; renders clean,
+  ~50 KB free at runtime. The reference pattern for the next step below.
+- 🔜 **Bring hardware/sensor data onto the UI** — build a live dashboard reusing the
+  `tictactoe_test.py` skeleton (`read_raw`/`get_tap` + `state` dict + `redraw`), driving
+  redraws from sensor reads. Sensors on their own pins; touch and display share SPI(1).
 - ⚠️ **Colors not yet confirmed by eye** — bars should read R/G/B/Y top-to-bottom.
   If red/blue are swapped, flip the `MADCTL` BGR bit (0x08) in the driver, or set
   `ST7796.COLOR_INVERT`.
