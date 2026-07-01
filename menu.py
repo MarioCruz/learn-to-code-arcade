@@ -25,13 +25,14 @@ wri = CWriter(ssd, font, WHITE, BLACK, verbose=False)
 # (label, module name, accent colour)
 GAMES = (("Tic-Tac-Toe", "tictactoe_test", CYAN),
          ("Connect Four", "connect4_test", YELLOW),
-         ("Minesweeper", "minesweeper_test", GREEN))
+         ("Minesweeper", "minesweeper_test", GREEN),
+         ("Hangman", "hangman_test", MAGENTA))
 
-BTN_W, BTN_H, GAP = 300, 52, 20
-BTN_X = (W - BTN_W) // 2                     # horizontally centred
-BLOCK_H = 3 * BTN_H + 2 * GAP                # total height of the button block
-TOP = (H - BLOCK_H) // 2 + 6                 # centred vertically, nudged for title
-FONT_H = 20                                  # freesans20 glyph height
+BTN_W, BTN_H, GAP = 300, 46, 16
+BTN_X = (W - BTN_W) // 2                          # horizontally centred
+BLOCK_H = len(GAMES) * BTN_H + (len(GAMES) - 1) * GAP
+TOP = (H - BLOCK_H) // 2 + 6                      # centred vertically, nudged for title
+FONT_H = 20                                       # freesans20 glyph height
 
 
 def btn_rect(i):

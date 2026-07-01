@@ -7,9 +7,10 @@ Context for Claude Code. Read this before working here.
 Peter Hinch's **nano-gui** + **XPT2046** resistive touch running on a **4.0" ST7796S**
 480×320 TFT, driven by a **plain ESP32 (no PSRAM)** under stock MicroPython v1.27.0.
 Tests + a game launcher: `nanogui_test.py` (display render), `touch_test.py` (touch),
-and three games — `tictactoe_test.py` (the reference interactive-UI pattern),
-`connect4_test.py` (minimax + alpha-beta AI), `minesweeper_test.py` (DIG/FLAG mode toggle).
-`menu.py` is a touch launcher that runs any of the three; shared display+touch code is in
+and four games — `tictactoe_test.py` (the reference interactive-UI pattern),
+`connect4_test.py` (minimax + alpha-beta AI), `minesweeper_test.py` (DIG/FLAG mode toggle),
+`hangman_test.py` (self-drawn on-screen A-Z keyboard; nano-gui has no keyboard widget).
+`menu.py` is a touch launcher that runs any of the four; shared display+touch code is in
 `game_common.py`. The games are both standalone-runnable and importable (guarded by
 `if __name__ == "__main__"`); the menu unloads each game's module on exit so only one is
 resident at a time (no PSRAM). Extracted from `ESP32-EnvMonitor-v2` on 2026-07-01.
@@ -66,6 +67,7 @@ mpremote connect /dev/cu.usbserial-110 run touch_test.py   # touch test (tap dur
 mpremote connect /dev/cu.usbserial-110 run tictactoe_test.py # touch game (tap to play, Ctrl-C to stop)
 mpremote connect /dev/cu.usbserial-110 run connect4_test.py  # Connect Four vs minimax AI (tap a column)
 mpremote connect /dev/cu.usbserial-110 run minesweeper_test.py # Minesweeper (MODE toggles DIG/FLAG)
+mpremote connect /dev/cu.usbserial-110 run hangman_test.py   # Hangman (on-screen A-Z keyboard)
 mpremote connect /dev/cu.usbserial-110 run menu.py           # game launcher (tap a game; MENU returns)
 # boot into the menu on power-up:
 mpremote connect /dev/cu.usbserial-110 fs cp menu.py :main.py
@@ -86,7 +88,9 @@ Interactive touch capture: `run touch_test.py` blocks ~35 s and prints each tap'
 - ✅ `minesweeper_test.py` — Minesweeper (9×7, 10 mines) on the same skeleton. Resistive
   touch has no right-click, so a MODE button toggles DIG/FLAG. First dig safe, zero-cells
   flood, `random` seeded from `ticks_us`. Dips to ~37 KB during a large flood render.
-- ✅ `menu.py` — touch launcher for the three games; `game_common.py` holds the shared
+- ✅ `hangman_test.py` — Hangman with a self-drawn on-screen A-Z keyboard (nano-gui has NO
+  keyboard widget — display-only). 9/9/8 key grid, six misses draws the figure. ~35 KB free.
+- ✅ `menu.py` — touch launcher for the four games; `game_common.py` holds the shared
   display+touch helpers. Games are standalone-runnable AND importable; menu unloads each
   game's module on exit (only one resident — no PSRAM). Labels centred via `wri.stringlen`.
   Can boot as `main.py`. Worst case (Minesweeper flood under the menu) leaves ~33 KB free.

@@ -8,12 +8,13 @@ Ready-to-run tests:
 
 | File | What it does |
 |------|--------------|
-| `menu.py`           | **Game launcher** — a touch menu that runs Tic-Tac-Toe, Connect Four, or Minesweeper; each game's **MENU** button returns here. Can boot on power-up as `main.py`. |
+| `menu.py`           | **Game launcher** — a touch menu that runs Tic-Tac-Toe, Connect Four, Minesweeper, or Hangman; each game's **MENU** button returns here. Can boot on power-up as `main.py`. |
 | `nanogui_test.py`   | Full-screen nano-gui render: color bars, border, text labels, shapes. |
 | `touch_test.py`     | Reads the XPT2046 over the shared SPI bus and draws a marker where you touch, with 5 on-screen calibration targets. |
 | `tictactoe_test.py` | Full touch-driven game: tap a cell to play X, a heuristic AI plays O, on-screen scoreboard + **NEW GAME** button. Demonstrates the complete touch → state → redraw loop. |
 | `connect4_test.py`  | Connect Four: tap a column to drop a RED disc, a minimax + alpha-beta AI plays YELLOW, winning four ringed in white, scoreboard + **NEW GAME** button. |
 | `minesweeper_test.py` | Minesweeper (9×7, 10 mines): a **MODE** button toggles DIG/FLAG (resistive touch has no right-click), first dig is always safe, zero-cells flood open, mines reveal on a loss. |
+| `hangman_test.py`   | Hangman with an on-screen A–Z keyboard: tap letters to guess, six misses draws the full figure. |
 
 ## Install the whole suite
 
@@ -35,7 +36,7 @@ with `mpremote connect <port> fs rm :main.py`.
 
 ## Game launcher (menu)
 
-`menu.py` is a touch launcher that ties the three games together. It shows a button per
+`menu.py` is a touch launcher that ties the four games together. It shows a button per
 game; tapping one loads that game's module and calls its `run()`. Each game has a **MENU**
 button that returns you to the launcher.
 
@@ -108,6 +109,22 @@ mpremote connect /dev/cu.usbserial-110 run minesweeper_test.py
 
 Tune `COLS`, `ROWS`, `MINES` at the top for a bigger/harder board (keep cells ≥ ~30 px so
 they stay easy to tap). Runs with ~50 KB free (dips to ~37 KB during a large flood render).
+
+## Hangman (touch game)
+
+nano-gui has **no keyboard widget** (the vendored subset is display-only, with no input
+widgets), so `hangman_test.py` draws its own on-screen **A–Z keyboard** — a 9/9/8 grid of
+tap buttons built with the same pattern as the launcher. Tap letters to guess a word from
+the built-in list; keys turn green (in the word) or red (a miss); six misses draws the full
+figure and reveals the answer. **NEW** starts a new word, **MENU** returns to the launcher.
+
+```bash
+./deploy.sh /dev/cu.usbserial-110
+mpremote connect /dev/cu.usbserial-110 run hangman_test.py
+```
+
+Edit the `WORDS` tuple to change the word list (keep entries A–Z and ≤ ~9 letters so they
+fit the display). Runs with ~35 KB free.
 
 ## Hardware
 
@@ -214,5 +231,5 @@ handoff; do sensor I2C/1-Wire on their own pins.
 - **ST7796 driver, hardware setup, tests, games, and launcher**
   (`drivers/st7796/st7796.py`, `color_setup.py`, `game_common.py`, `menu.py`,
   `nanogui_test.py`, `touch_test.py`, `tictactoe_test.py`, `connect4_test.py`,
-  `minesweeper_test.py`) — © Mario Cruz, MIT. See `LICENSE`. The ST7796 driver derives
-  from Peter Hinch's ILI9486 driver (MIT).
+  `minesweeper_test.py`, `hangman_test.py`) — © Mario Cruz, MIT. See `LICENSE`. The ST7796
+  driver derives from Peter Hinch's ILI9486 driver (MIT).
