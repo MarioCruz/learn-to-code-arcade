@@ -81,6 +81,46 @@ is there for the *how* and the *why* the whole way.
 > New to Claude Code? Get it at https://claude.com/claude-code, then run `claude` in this
 > folder and say hello.
 
+## Games you could build next
+
+Once changing the games feels easy, build your own. Everything below fits this hardware,
+and each one is a project a beginner can actually finish. Ask Claude Code to *"help me plan
+a snake game for this project"* and it will walk you through it, starting from the pattern
+the five existing games share.
+
+**Good first builds** — an afternoon each, all taps, reuse the tic-tac-toe skeleton:
+
+- **Memory / match pairs** — a grid of face-down cards, tap two to flip them.
+- **Lights Out** — tapping a cell toggles it and its neighbours; get the board dark.
+- **Whack-a-mole** — targets pop up, tap them fast, score against a timer.
+- **Rock paper scissors** — three big buttons against the CPU, first to five.
+
+**Weekend projects** — more game logic, still taps and swipes:
+
+- **Snake** — moves one cell per tick, swipe to steer. The classic for a reason.
+- **Simon** — four colored panels flash a sequence, you tap it back. Add a $2 buzzer on a
+  spare pin for the real bleep-bloop experience.
+- **15-puzzle** — slide tiles into order; borrow the swipe code from `2048_test.py`.
+- **Dots and boxes** — take turns drawing lines, close boxes, beat a simple CPU.
+- **Battleship** — a hidden grid, hit and miss markers, a CPU that hunts.
+
+**Big challenges** — for when the others feel easy:
+
+- **Reversi / Othello** — the board is simple; a CPU worth beating is the real project
+  (steal ideas from the minimax in `connect4_test.py`).
+- **Checkers** — legal-move highlighting, jumps, and kings. A real test of game state.
+- **Sudoku** — the grid and number pad are a UI project; generating valid puzzles is a
+  logic project. Two projects in one.
+- **Tetris or Breakout** — smooth motion pushes past the full-screen redraw and teaches
+  you to repaint only the parts that changed. Genuinely hard here, genuinely satisfying.
+
+What fits and what doesn't: the screen redraws fully a few times per second, which is
+perfect for turn-based, tap, and grid-tick games (Snake moves cell by cell, so it looks
+right), but fast smooth action needs the partial-redraw trick in the last group. Touch is
+single-point: taps and swipes work great, and two-finger gestures do not exist.
+
+If you build one, open a pull request. The menu has room.
+
 ---
 
 ## Under the hood (the technical bits)
