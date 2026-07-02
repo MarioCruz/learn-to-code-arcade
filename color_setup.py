@@ -2,7 +2,14 @@
 # Import this FIRST so the framebuffer is allocated before other modules.
 from machine import Pin, SPI
 import gc
+import time
 from drivers.st7796.st7796 import ST7796 as SSD
+
+# Cold-boot settle: at power-on, main.py reaches this init faster than the
+# panel is ready to accept commands (~120 ms after VDD stabilizes). Without
+# this delay the init is silently ignored and the screen stays black while
+# the code runs on. Costs 250 ms on every start; required for standalone boot.
+time.sleep_ms(250)
 
 pdc = Pin(2, Pin.OUT, value=0)
 pcs = Pin(15, Pin.OUT, value=1)

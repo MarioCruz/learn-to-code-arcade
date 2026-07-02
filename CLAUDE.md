@@ -99,8 +99,23 @@ Interactive touch capture: `run touch_test.py` blocks ~35 s and prints each tap'
   keyboard widget — display-only). 9/9/8 key grid, six misses draws the figure. ~35 KB free.
 - ✅ `2048_test.py` — 2048 (4×4). Adds SWIPE input: `get_gesture()` follows the touch from
   down to up and classifies tap vs swipe (dir from the larger axis). Logic self-tested;
-  ~53 KB free. NOTE: standalone verified on device, but the 5-game menu layout (BTN_H=40,
-  GAP=10) was NOT yet visually confirmed on the panel (port was busy at build time).
+  ~53 KB free. 5-game menu confirmed on device: all five games load/unload via the launcher
+  (all `run=True`), MENU_READY, ~62 KB free. Button-position layout (BTN_H=40, GAP=10) is
+  computed from `len(GAMES)` and headlessly verified to load; visual placement not eyeballed.
+  Full-code check 2026-07-01: all 20 .py files compile; menu hardened (game crash can't kill
+  the launcher; menu draws before the boot selftest; no double-draw at startup).
+- ✅ **Device boots standalone**: `menu.py` installed as `main.py` on the board 2026-07-01,
+  so it starts the arcade on any USB power, untethered. Remember: `mpremote run` is
+  tethered — the program stops when the connection drops; only `main.py` runs standalone.
+  Remove with `mpremote connect <port> fs rm :main.py` if REPL-first behavior is needed.
+- ⚠️ **Cold-boot black screen ≠ software** (debugged 2026-07-01): symptoms were black screen
+  at power-on while the code ran fine underneath (verified via `mpremote resume exec` —
+  no reset — showing all modules loaded and the menu loop alive). Root cause was a flaky
+  USB cable/power connection: panel + backlight inrush browned out the init; eventually the
+  USB link dropped entirely. Fixed by swapping the cable. Diagnostic path worth reusing:
+  `resume exec` to inspect live state without wiping it; `sys.modules` populated = code
+  runs behind the black screen. `color_setup.py` retains a 250 ms power-settle before panel
+  init as cheap insurance (proper ST7796 post-VDD timing).
 - ✅ `menu.py` — touch launcher for the four games; `game_common.py` holds the shared
   display+touch helpers. Games are standalone-runnable AND importable; menu unloads each
   game's module on exit (only one resident — no PSRAM). Labels centred via `wri.stringlen`.

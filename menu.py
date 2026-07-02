@@ -63,19 +63,23 @@ def draw_menu():
 
 def launch(mod_name):
     gc.collect()                            # reclaim menu-draw garbage first
-    mod = __import__(mod_name)
     try:
+        mod = __import__(mod_name)
         mod.run()
+    except Exception as e:                  # a crashed game must not kill the menu
+        print("GAME_ERROR %s: %r" % (mod_name, e))
     finally:
         if mod_name in sys.modules:
             del sys.modules[mod_name]
-        del mod
         gc.collect()
 
 
-def run():
+def run(first_drawn=False):
     while True:
-        draw_menu()
+        if first_drawn:
+            first_drawn = False             # menu already on screen from startup
+        else:
+            draw_menu()
         chosen = None
         while chosen is None:
             x, y = get_tap()
@@ -101,9 +105,8 @@ def selftest():
     print("MENU_SELFTEST_DONE free=%d" % gc.mem_free())
 
 
+draw_menu()                                 # show the menu immediately on boot
 if MENU_SELFTEST:
-    selftest()
-
-draw_menu()
+    selftest()                              # import checks run behind the visible menu
 print("MENU_READY tap a game (Ctrl-C to stop) free=%d" % gc.mem_free())
-run()
+run(first_drawn=True)
